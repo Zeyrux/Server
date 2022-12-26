@@ -1,11 +1,6 @@
 /* body, sub mains */
 body {
-  background: linear-gradient(
-    90deg,
-    rgb(24, 24, 24) 0%,
-    rgb(65, 65, 65) 20%,
-    rgb(156, 156, 156) 100%
-  );
+  background: linear-gradient(90deg, rgb(46, 46, 46) 0%, rgb(83, 83, 83) 100%);
 }
 
 .main_div {
@@ -24,11 +19,7 @@ body {
   border-radius: 5vw;
   padding: 1vh 2vw;
   margin: 0 2vw;
-  background: linear-gradient(
-    90deg,
-    rgba(28, 1, 1, 1) 0%,
-    rgb(92, 29, 29) 100%
-  );
+  background: linear-gradient(90deg, rgb(3, 1, 28) 0%, rgb(30, 29, 92) 100%);
 }
 
 .sub_main_heading {
