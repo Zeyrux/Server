@@ -1,0 +1,81 @@
+/* body, sub mains */
+body {
+  background: linear-gradient(
+    90deg,
+    rgb(24, 24, 24) 0%,
+    rgb(65, 65, 65) 20%,
+    rgb(156, 156, 156) 100%
+  );
+}
+
+.main_div {
+  position: absolute;
+  top: 50%;
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
+  width: 95vw;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+.sub_main_div {
+  border: 0.1vw solid black;
+  border-radius: 5vw;
+  padding: 1vh 2vw;
+  margin: 0 2vw;
+  background: linear-gradient(
+    90deg,
+    rgba(28, 1, 1, 1) 0%,
+    rgb(92, 29, 29) 100%
+  );
+}
+
+.sub_main_heading {
+  color: whitesmoke;
+  text-align: center;
+  margin: 2vh 0;
+}
+
+/* Project */
+.projects_div {
+  display: flex;
+}
+
+.project_div {
+  width: 25vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 0.1vw solid black;
+  border-radius: 3vw;
+  background: linear-gradient(
+    90deg,
+    rgb(8, 0, 148) 0%,
+    rgb(55, 97, 193) 32%,
+    rgb(121, 232, 255) 100%
+  );
+}
+
+.project_p {
+  color: whitesmoke;
+  font-size: 3vh;
+  text-align: center;
+  margin: 1vh 1vw;
+}
+
+.project_img {
+  width: 4vw;
+  height: 4vw;
+}
+/* About me */
+.self_image {
+  width: 15vh;
+  height: 15vh;
+  float: left;
+}
+
+.self_description {
+  text-align: justify;
+  color: whitesmoke;
+}

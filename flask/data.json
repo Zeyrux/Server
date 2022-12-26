@@ -1,0 +1,12 @@
+{
+  "host": "localhost",
+  "port": 5010,
+  "debug": true,
+  "db": {
+    "username": "root",
+    "password": "root",
+    "host": "localhost",
+    "port": 3306,
+    "db_name": "Server"
+  }
+}

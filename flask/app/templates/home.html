@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome by Theo</title>
+    <link
+      rel="stylesheet"
+      href="{{url_for('static', filename='styles/home.css')}}"
+    />
+  </head>
+  <body>
+    <div class="main_div">
+      <div class="sub_main_div">
+        <h1 class="sub_main_heading"><b>Projects</b></h1>
+        <div class="projects_div">
+          {% for project in projects %}
+          <div class="project_div">
+            <p class="project_p"><b>{{project["name"]}}</b></p>
+            {% if "github" in project.keys() %}
+            <form
+              action="{{project.github}}"
+              id="{{project.github}}"
+              method="get"
+            ></form>
+            <img
+              class="project_img"
+              src="{{url_for('static', filename='images/github.png')}}"
+              alt="github link"
+              onclick="document.getElementById('{{project.github}}').submit()"
+            />
+            {% endif %} {% if "website" in project.keys() %}
+            <form
+              action="{{project.website}}"
+              id="{{project.website}}"
+              method="get"
+            ></form>
+            <img
+              class="project_img"
+              src="{{url_for('static',
+            filename='images/web.png')}}"
+              alt="website link"
+              onclick="window.location.replace('{{project.website}}')"
+            />
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="sub_main_div">
+        <h1 class="sub_main_heading">About Me</h1>
+        <div>
+          <img
+            class="self_image"
+            src="{{url_for('static', filename='images/github.png')}}"
+            alt="profile image"
+          />
+          <p class="self_description">
+            Ich bin ne Beschreibung von mir Ich bin ne Beschreibung von mir Ich
+            bin ne Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin
+            ne Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mirIch bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mirIch bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir Ich bin ne Beschreibung von mir Ich bin ne
+            Beschreibung von mir
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
