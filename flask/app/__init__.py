@@ -9,7 +9,7 @@ from flask_login import LoginManager
 
 db = SQLAlchemy()
 app = Flask(__name__)
-# socket = SocketIO(app)
+socket = SocketIO(app)
 
 
 def create_app():
@@ -45,7 +45,6 @@ def create_app():
     # def init_app():
     #     create_database(app)
 
-    socket = None
     return app, socket
 
 
