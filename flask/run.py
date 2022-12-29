@@ -7,4 +7,4 @@ conf = load(open("data.json", "r"))
 
 
 app, socket = create_app()
-app.run(host=conf["host"], port=conf["port"], debug=conf["debug"])
+# app.run(host=conf["host"], port=conf["port"], debug=conf["debug"])
