@@ -21,7 +21,7 @@ def create_app():
         + f"@{data['db']['host']}:{data['db']['port']}/"
         + f"{data['db']['db_name']}"
     )
-    db.init_app(app)
+    # db.init_app(app)
 
     # routes
     from .routes import routes
@@ -41,9 +41,9 @@ def create_app():
     def load_user(id):
         return Users.query.get(int(id))
 
-    @app.before_first_request
-    def init_app():
-        create_database(app)
+    # @app.before_first_request
+    # def init_app():
+    #     create_database(app)
 
     socket = None
     return app, socket
