@@ -1,8 +1,8 @@
 from json import load
 from pathlib import Path
 
-from flask import Blueprint, request, flash, redirect, url_for, render_template
-from flask_login import login_required, current_user
+from flask import Blueprint, render_template
+
 
 home_bp = Blueprint("home", __name__)
 

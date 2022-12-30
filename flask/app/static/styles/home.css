@@ -59,6 +59,7 @@ body {
   width: 4vw;
   height: 4vw;
 }
+
 /* About me */
 .self_image {
   width: 15vh;
@@ -74,4 +75,8 @@ body {
 .self_description {
   text-align: justify;
   color: whitesmoke;
+}
+
+.impressum_link {
+  color: dodgerblue;
 }
