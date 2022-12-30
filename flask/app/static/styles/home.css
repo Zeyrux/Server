@@ -1,6 +1,6 @@
 /* body, sub mains */
 body {
-  background: linear-gradient(90deg, rgb(46, 46, 46) 0%, rgb(83, 83, 83) 100%);
+  background: rgb(46, 46, 46) 0%;
 }
 
 .main_div {
@@ -16,7 +16,7 @@ body {
 
 .sub_main_div {
   border: 0.1vw solid black;
-  border-radius: 5vw;
+  border-radius: 2vw;
   padding: 1vh 2vw;
   margin: 0 2vw;
   background: linear-gradient(90deg, rgb(3, 1, 28) 0%, rgb(30, 29, 92) 100%);
@@ -64,6 +64,11 @@ body {
   width: 15vh;
   height: 15vh;
   float: left;
+}
+
+.self_image:hover {
+  cursor: grab;
+  /* DO SOMETHING */
 }
 
 .self_description {
