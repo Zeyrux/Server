@@ -58,6 +58,7 @@ body {
 .project_img {
   width: 4vw;
   height: 4vw;
+  cursor: pointer;
 }
 
 /* About me */
