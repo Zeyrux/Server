@@ -1,5 +1,4 @@
-from app import create_server
+from app import Server
 
 
-server = create_server()
-server.run()
+Server().run()
