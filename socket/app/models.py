@@ -10,6 +10,20 @@ from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
 Base = declarative_base()
 
 
+class Client(Base):
+    __tablename__ = "clients"
+
+    id = Column("id", INTEGER(), primary_key=True)
+    ip = Column("ip", VARCHAR(15), unique=True, nullable=False)
+    last_sync = Column("last_sync", DATETIME(), nullable=False)
+
+    def __init__(self, ip, last_sync: datetime = None) -> None:
+        self.ip = ip
+        self.last_sync = (
+            last_sync if last_sync is not None else datetime(2000, 1, 1, 0, 0, 0, 0)
+        )
+
+
 class File(Base):
     __tablename__ = "files"
 
@@ -41,7 +55,6 @@ class File(Base):
         return f"<{self.__tablename__}: {self.__dict__}>"
 
 
-# TODO: don't use src_path and dest_path, insted file from file table
 class Event(Base):
     __tablename__ = "events"
 
@@ -51,10 +64,10 @@ class Event(Base):
     # 2 file deleted
     # 3 file created
     id = Column("id", INTEGER(), primary_key=True)
-    client = Column("client", VARCHAR(11), nullable=False)
+    client = Column("client", ForeignKey("clients.id"), nullable=False)
     event_type = Column("event_type", INTEGER(), nullable=False)
-    src_file = Column(ForeignKey("files.id"), nullable=False)
-    dest_file = Column(ForeignKey("files.id"), nullable=True)
+    src_file = Column("src_file", ForeignKey("files.id"), nullable=False)
+    dest_file = Column("dest_file", ForeignKey("files.id"), nullable=True)
 
     def __init__(
         self,
@@ -81,22 +94,18 @@ class Event(Base):
         if self.src_file is None:
             self.src_file = File(src_path)
             session.add(self.src_file)
-            session.commit()
-        # add dest_path if not exists
+        # add dest_file if not exists
         if dest_path is not None:
             self.dest_file = session.query(File).filter_by(path=dest_path).first()
             if self.dest_file is None:
                 self.dest_file = File(dest_path)
                 session.add(self.dest_file)
-                session.commit()
         # handle remove
         if event_type == 2:
             self.src_file.exists = False
-            session.commit()
         # handle create
         if event_type == 3:
             self.src_file.exists = True
-            session.commit()
         # turn files into path
         self.src_file = self.src_file.id
         if self.dest_file is not None:

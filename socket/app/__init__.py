@@ -3,7 +3,8 @@ from json import load
 from pathlib import Path
 from threading import Thread
 
-from .models import mapper
+from .models import Base, File, Event
+from .models import Client as DBClient
 
 from server_client_manager import recv_authentication, recv_file
 from server_client_manager.data import Data
@@ -20,16 +21,23 @@ class Database:
     def __init__(self, db_path: Path | str) -> None:
         self.path = db_path if type(db_path).__name__ == "Path" else Path(db_path)
         self.engine = create_engine(f"sqlite:///{self.path}", echo=True)
-        self.base = mapper.generate_base()
-        self.base.metadata.create_all(bind=self.engine)
+        self.Base = Base
+        self.Base.metadata.create_all(bind=self.engine)
         self.session = sessionmaker(bind=self.engine)()
+        self.session.autocommit = True
 
 
 class Client:
     def __init__(
-        self, server: socket, client: socket, addr: tuple[str, int], password_hash: str
+        self,
+        server: socket,
+        db_server: Database,
+        client: socket,
+        addr: tuple[str, int],
+        password_hash: str,
     ) -> None:
         self.server = server
+        self.db_server = db_server
         self.client = client
         self.ip, self.port = addr
         self.password_hash = password_hash
@@ -42,6 +50,12 @@ class Client:
             db_path = Path("app", "temp", secure_filename(f"{self.ip}.db"))
             recv_file(self.client, path=db_path)
             self.db = Database(db_path)
+            self.sync()
+
+    def sync(self):
+        client_db = self.db_server.session.query(Client).filter(ip=self.ip).first()
+        if client_db is None:
+            self.db_server.session.add(DBClient(self.ip))
 
     def authenticate(self) -> None:
         req = self.client.recv(self.data.REQUEST_LENGHT).decode()
@@ -64,7 +78,7 @@ class Server:
         self.password_hash = data["password_hash"]
         self.socket = socket(AF_INET, SOCK_STREAM)
         self.data = Data()
-        self.database = Database("db.db")
+        self.db = Database("db.db")
 
     def run(self) -> None:
         self.socket.bind((self.host, self.port))
@@ -72,7 +86,9 @@ class Server:
         while True:
             client, addr = self.socket.accept()
             thread = Thread(
-                target=Client(self.socket, client, addr, self.password_hash).run,
+                target=Client(
+                    self.socket, self.db, client, addr, self.password_hash
+                ).run,
                 daemon=True,
             )
             thread.start()
