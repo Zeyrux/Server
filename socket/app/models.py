@@ -68,6 +68,7 @@ class Event(Base):
     event_type = Column("event_type", INTEGER(), nullable=False)
     src_file = Column("src_file", ForeignKey("files.id"), nullable=False)
     dest_file = Column("dest_file", ForeignKey("files.id"), nullable=True)
+    time = Column("time", DATETIME(), nullable=False)
 
     def __init__(
         self,
@@ -75,7 +76,9 @@ class Event(Base):
         event_type: str | int,
         src_path: str,
         dest_path: str = None,
+        time: datetime = datetime.now(),
     ) -> None:
+        self.time = time
         if type(event_type).__name__ == "str":
             event_type = (
                 0

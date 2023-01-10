@@ -24,7 +24,6 @@ class Database:
         self.Base = Base
         self.Base.metadata.create_all(bind=self.engine)
         self.session = sessionmaker(bind=self.engine)()
-        self.session.autocommit = True
 
 
 class Client:
@@ -53,9 +52,19 @@ class Client:
             self.sync()
 
     def sync(self):
-        client_db = self.db_server.session.query(Client).filter(ip=self.ip).first()
+        client_db = self.db_server.session.query(DBClient).filter_by(ip=self.ip).first()
         if client_db is None:
-            self.db_server.session.add(DBClient(self.ip))
+            client_db = DBClient(self.ip)
+            self.db_server.session.add(client_db)
+            self.db_server.session.commit()
+        events = (
+            self.db.session.query(Event)
+            .filter(Event.time > client_db.last_sync)
+            .order_by(Event.time)
+            .all()
+        )
+        for event in Event:
+            print(event)
 
     def authenticate(self) -> None:
         req = self.client.recv(self.data.REQUEST_LENGHT).decode()
