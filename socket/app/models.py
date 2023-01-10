@@ -7,6 +7,11 @@ from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
 
 
+EVENT_MODIFIED = 0
+EVENT_MOVED = 1
+EVENT_DELETED = 2
+EVENT_CREATED = 3
+
 Base = declarative_base()
 
 
@@ -58,11 +63,6 @@ class File(Base):
 class Event(Base):
     __tablename__ = "events"
 
-    # event types:
-    # 0 file modified
-    # 1 file moved
-    # 2 file deleted
-    # 3 file created
     id = Column("id", INTEGER(), primary_key=True)
     client = Column("client", ForeignKey("clients.id"), nullable=False)
     event_type = Column("event_type", INTEGER(), nullable=False)
@@ -81,13 +81,13 @@ class Event(Base):
         self.time = time
         if type(event_type).__name__ == "str":
             event_type = (
-                0
+                EVENT_MODIFIED
                 if event_type == "modified"
-                else 1
+                else EVENT_MOVED
                 if event_type == "moved"
-                else 2
+                else EVENT_DELETED
                 if event_type == "deleted"
-                else 3
+                else EVENT_CREATED
                 if event_type == "created"
                 else None
             )
@@ -104,10 +104,10 @@ class Event(Base):
                 self.dest_file = File(dest_path)
                 session.add(self.dest_file)
         # handle remove
-        if event_type == 2:
+        if event_type == EVENT_DELETED:
             self.src_file.exists = False
         # handle create
-        if event_type == 3:
+        if event_type == EVENT_CREATED:
             self.src_file.exists = True
         # turn files into path
         self.src_file = self.src_file.id
