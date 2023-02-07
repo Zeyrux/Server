@@ -101,35 +101,20 @@ class Client:
 
     def handle_event(self, event: Event) -> None:
         if not event.src_file.exists and event.event_type != EVENT_MOVED:
-            return
-        if (
-            self.db.session()
-            .query(Event)
-            .filter(Event.src_file == event.src_file)
-            .first()
-            is not None
-            or self.db.session()
-            .query(Event)
-            .filter(Event.dest_file == event.src_file)
-            .first()
-            is not None
-        ) and event.event_type != EVENT_MOVED:
-            return
+            self.mark_event_handelt(event)
         # get event path
-        src_file_client = (
-            self.db.session().query(File).filter(File.id == event.src_file).first()
-        )
+        src_file_client = event.get_src_file(self.db.session())
         if src_file_client is None:
-            pass
-            # TODO: handle
+            self.mark_event_handelt(event)
         # get src_file from server
         src_file_server = (
             self.db_server.session()
             .query(File)
-            .filter(File.path == event.src_file)
+            .filter(File.path == src_file_client.path)
             .first()
         )
         if src_file_server is None:
+            # TODO: event.src_file is number not the path
             src_file_server = File(
                 event.src_file, datetime=datetime(2000, 1, 1, 0, 0, 0, 0)
             )
@@ -144,6 +129,12 @@ class Client:
             pass
         elif event.event_type == EVENT_CREATED:
             pass
+
+    def mark_event_handelt(self, event: Event) -> None:
+        self.db_server.session().add(
+            Event.from_other_db(self.db_server.session(), self.db, event)
+        )
+        self.db_server.session().commit()
 
     def _handle_event_modified(self, event: Event, src_file_server: File) -> None:
         if src_file_server.change_date < self.db.session().query(File).filter(

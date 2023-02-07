@@ -70,12 +70,15 @@ class Event(Base):
     dest_file = Column("dest_file", ForeignKey("files.id"), nullable=True)
     time = Column("time", DATETIME(), nullable=False)
 
+    src_file_obj = None
+    dest_file_obj = None
+
     def __init__(
         self,
         session: Session,
         event_type: str | int,
-        src_path: str,
-        dest_path: str = None,
+        src_path: str | int,
+        dest_path: str | int = None,
         time: datetime = datetime.now(),
     ) -> None:
         self.time = time
@@ -113,6 +116,40 @@ class Event(Base):
         self.src_file = self.src_file.id
         if self.dest_file is not None:
             self.dest_file = self.dest_file.id
+
+    def src_path(self, session: Session) -> Path:
+        return Path(self.get_src_file(session).path)
+
+    def dest_path(self, session: Session) -> Path:
+        return Path(self.get_dest_file(session).path)
+
+    def get_src_file(self, session: Session) -> File:
+        if self.src_file_obj is None:
+            self.src_file_obj = (
+                session.query(File).filter(File.id == self.src_file).first()
+            )
+        return self.src_file_obj
+
+    def get_dest_file(self, session: Session) -> File:
+        if self.dest_file_obj is None:
+            self.dest_file_obj = (
+                session.query(File).filter(File.id == self.dest_file).first()
+            )
+        return self.dest_file_obj
+
+    @staticmethod
+    def from_other_db(
+        session_new_event: Session, session_existing_event: Session, event: "Event"
+    ) -> "Event":
+        return Event(
+            session_new_event,
+            event.event_type,
+            event.src_path(session_existing_event),
+            dest_path=event.dest_path(session_existing_event)
+            if event.dest_file is not None
+            else None,
+            time=event.time,
+        )
 
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
