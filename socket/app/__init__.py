@@ -137,11 +137,10 @@ class Client:
         self.db_server.session().commit()
 
     def _handle_event_modified(self, event: Event, src_file_server: File) -> None:
-        if src_file_server.change_date < self.db.session().query(File).filter(
-            File.id == event.src_file
-        ):
+        if src_file_server.change_date < event.get_src_file().change_date:
             pass
-            # TODO: event.src_file is number and not the path, get path first
+            # TODO: some work
+        # TODO: return error in syncing (2 versions of file)
 
     def _handle_event_moved(self, event: Event, src_file_server: File) -> None:
         if not event.dest_file.exists:
