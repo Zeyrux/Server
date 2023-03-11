@@ -42,6 +42,12 @@ class File(Base):
         self.change_date = change_date
         self.exists = exists
 
+    @staticmethod
+    def from_file(file: "File", change_date=None):
+        if change_date is None:
+            change_date = file.change_date
+        return File(file.path, file.size, change_date, exists=file.exists)
+
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
 
@@ -80,7 +86,6 @@ class Event(Base):
             )
         self.event_type = event_type
         # add src_file if not exists
-        print("SRC", src_path)
         self.src_file = session.query(File).filter_by(path=src_path).first()
         if self.src_file is None:
             self.src_file = File(src_path)

@@ -18,7 +18,7 @@ DATA_PATH = Path("client", "data.json")
 class Database:
     def __init__(self, db_path: Path | str) -> None:
         self.path = db_path if type(db_path).__name__ == "Path" else Path(db_path)
-        self.engine = create_engine(f"sqlite:///{self.path}", echo=True)
+        self.engine = create_engine(f"sqlite:///{self.path}")
         self.Base = Base
         self.Base.metadata.create_all(bind=self.engine)
         self.session_maker = sessionmaker(bind=self.engine)
@@ -51,7 +51,11 @@ class Client:
             self.queue.get()
 
     def sync(self) -> None:
-        self.socket.connect((self.host, self.port))
+        try:
+            self.socket.connect((self.host, self.port))
+        except ConnectionRefusedError:
+            print("No connection possible ):")
+            return
         send_authentication(self.socket, self.password)
         print("Authenticated")
         send_file(self.socket, self.db.path, send_path=False, send_request_type=False)

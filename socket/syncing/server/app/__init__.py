@@ -29,7 +29,7 @@ PATH_DATA = Path("server", "data.json")
 class Database:
     def __init__(self, db_path: Path | str) -> None:
         self.path = db_path if type(db_path).__name__ == "Path" else Path(db_path)
-        self.engine = create_engine(f"sqlite:///{self.path}", echo=True)
+        self.engine = create_engine(f"sqlite:///{self.path}")
         self.Base = Base
         self.Base.metadata.create_all(bind=self.engine)
         self.session_maker = sessionmaker(bind=self.engine)
@@ -62,12 +62,14 @@ class Client:
         self.db: Database = None
 
     def run(self) -> None:
-        if self.authenticate():
-            # recv database
-            db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
-            recv_file(self.client, path=db_path)
-            self.db = Database(db_path)
-            self.sync()
+        # TODO: Remove
+        # if self.authenticate():
+        # recv database
+        db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
+        # TODO: Remove
+        # recv_file(self.client, path=db_path)
+        self.db = Database(db_path)
+        self.sync()
 
     def authenticate(self) -> None:
         req = self.client.recv(self.data.REQUEST_LENGHT).decode()
@@ -100,8 +102,10 @@ class Client:
             self.handle_event(event)
 
     def handle_event(self, event: Event) -> None:
-        print(f"Handle Event: {event}")
-        if not event.src_file.exists and event.event_type != EVENT_MOVED:
+        if (
+            not event.get_src_file(self.db.session()).exists
+            and event.event_type != EVENT_MOVED
+        ):
             self.mark_event_handelt(event)
         # get event path
         src_file_client = event.get_src_file(self.db.session())
@@ -116,8 +120,9 @@ class Client:
         )
         if src_file_server is None:
             # TODO: event.src_file is number not the path
-            src_file_server = File(
-                event.src_file, datetime=datetime(2000, 1, 1, 0, 0, 0, 0)
+            src_file_server = File.from_file(
+                event.get_src_file(self.db.session()),
+                change_date=datetime(2000, 1, 1, 0, 0, 0, 0),
             )
             self.db_server.session().add(src_file_server)
             self.db_server.session().commit()
@@ -133,12 +138,15 @@ class Client:
 
     def mark_event_handelt(self, event: Event) -> None:
         self.db_server.session().add(
-            Event.from_other_db(self.db_server.session(), self.db, event)
+            Event.from_other_db(self.db_server.session(), self.db.session(), event)
         )
         self.db_server.session().commit()
 
     def _handle_event_modified(self, event: Event, src_file_server: File) -> None:
-        if src_file_server.change_date < event.get_src_file().change_date:
+        if (
+            src_file_server.change_date
+            < event.get_src_file(self.db.session()).change_date
+        ):
             pass
             # TODO: some work
         # TODO: return error in syncing (2 versions of file)
@@ -165,7 +173,9 @@ class Server:
         self.socket.bind((self.host, self.port))
         self.socket.listen(5)
         while True:
-            client, addr = self.socket.accept()
+            # TODO: remove
+            # client, addr = self.socket.accept()
+            client, addr = (None, ("127.0.0.1", 53624))
             thread = Thread(
                 target=Client(
                     self.socket, self.db, client, addr, self.password_hash
@@ -173,3 +183,5 @@ class Server:
                 daemon=True,
             )
             thread.start()
+            # TODO: remove
+            thread.join()

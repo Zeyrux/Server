@@ -1,6 +1,6 @@
-from threading import Thread
 from json import load
 from pathlib import Path
+import os
 
 from .models import Event
 
@@ -47,7 +47,8 @@ class Collector:
         self.paths = load(open(SYNC_PATH, "r"))
         self.observer = Observer()
         for path in self.paths:
-            self.observer.schedule(EventHandler(db), path, recursive=True)
+            if os.path.exists(path):
+                self.observer.schedule(EventHandler(db), path, recursive=True)
 
     def run(self) -> None:
         self.observer.start()

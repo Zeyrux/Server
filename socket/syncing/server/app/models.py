@@ -56,6 +56,12 @@ class File(Base):
         self.change_date = change_date
         self.exists = exists
 
+    @staticmethod
+    def from_file(file: "File", change_date=None):
+        if change_date is None:
+            change_date = file.change_date
+        return File(file.path, file.size, change_date, exists=file.exists)
+
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
 
@@ -77,8 +83,8 @@ class Event(Base):
         self,
         session: Session,
         event_type: str | int,
-        src_path: str | int,
-        dest_path: str | int = None,
+        src_path: Path | str | int,
+        dest_path: Path | str | int = None,
         time: datetime = datetime.now(),
     ) -> None:
         self.time = time
@@ -96,13 +102,21 @@ class Event(Base):
             )
         self.event_type = event_type
         # add src_file if not exists
-        self.src_file = session.query(File).filter_by(path=src_path).first()
+        if type(src_path) == int:
+            self.src_file = session.query(File).filter_by(id=src_path).first()
+        else:
+            self.src_file = session.query(File).filter_by(path=str(src_path)).first()
         if self.src_file is None:
             self.src_file = File(src_path)
             session.add(self.src_file)
         # add dest_file if not exists
         if dest_path is not None:
-            self.dest_file = session.query(File).filter_by(path=dest_path).first()
+            if type(dest_path) == int:
+                self.dest_file = session.query(File).filter_by(id=dest_path).first()
+            else:
+                self.dest_file = (
+                    session.query(File).filter_by(path=str(dest_path)).first()
+                )
             if self.dest_file is None:
                 self.dest_file = File(dest_path)
                 session.add(self.dest_file)
@@ -116,6 +130,20 @@ class Event(Base):
         self.src_file = self.src_file.id
         if self.dest_file is not None:
             self.dest_file = self.dest_file.id
+
+    @staticmethod
+    def from_other_db(
+        session_new_event: Session, session_existing_event: Session, event: "Event"
+    ) -> "Event":
+        return Event(
+            session_new_event,
+            event.event_type,
+            event.src_path(session_existing_event),
+            dest_path=event.dest_path(session_existing_event)
+            if event.dest_file is not None
+            else None,
+            time=event.time,
+        )
 
     def src_path(self, session: Session) -> Path:
         return Path(self.get_src_file(session).path)
@@ -136,20 +164,6 @@ class Event(Base):
                 session.query(File).filter(File.id == self.dest_file).first()
             )
         return self.dest_file_obj
-
-    @staticmethod
-    def from_other_db(
-        session_new_event: Session, session_existing_event: Session, event: "Event"
-    ) -> "Event":
-        return Event(
-            session_new_event,
-            event.event_type,
-            event.src_path(session_existing_event),
-            dest_path=event.dest_path(session_existing_event)
-            if event.dest_file is not None
-            else None,
-            time=event.time,
-        )
 
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
