@@ -23,7 +23,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 
-PATH_DATA = Path("data.json")
+PATH_DATA = Path("server", "data.json")
 
 
 class Database:
@@ -64,7 +64,7 @@ class Client:
     def run(self) -> None:
         if self.authenticate():
             # recv database
-            db_path = Path("app", "temp", secure_filename(f"{self.ip}.db"))
+            db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
             recv_file(self.client, path=db_path)
             self.db = Database(db_path)
             self.sync()
@@ -100,6 +100,7 @@ class Client:
             self.handle_event(event)
 
     def handle_event(self, event: Event) -> None:
+        print(f"Handle Event: {event}")
         if not event.src_file.exists and event.event_type != EVENT_MOVED:
             self.mark_event_handelt(event)
         # get event path
@@ -158,7 +159,7 @@ class Server:
         self.password_hash = data["password_hash"]
         self.socket = socket(AF_INET, SOCK_STREAM)
         self.data = Data()
-        self.db = Database("db.db")
+        self.db = Database(Path("server", "db.db"))
 
     def run(self) -> None:
         self.socket.bind((self.host, self.port))
