@@ -57,6 +57,9 @@ class Client:
         self.db_server = db_server
         self.client = client
         self.ip, self.port = addr
+        self.client_id = (
+            self.db_server.session().query(DBClient).filter_by(ip=self.ip).first().id
+        )
         self.password_hash = password_hash
         self.data = Data()
         self.db: Database = None
@@ -138,7 +141,9 @@ class Client:
 
     def mark_event_handelt(self, event: Event) -> None:
         self.db_server.session().add(
-            Event.from_other_db(self.db_server.session(), self.db.session(), event)
+            Event.from_other_db(
+                self.db_server.session(), self.db.session(), event, self.ip
+            )
         )
         self.db_server.session().commit()
 
@@ -152,7 +157,7 @@ class Client:
         # TODO: return error in syncing (2 versions of file)
 
     def _handle_event_moved(self, event: Event, src_file_server: File) -> None:
-        if not event.dest_file.exists:
+        if not event.get_dest_file(self.db.session()).exists:
             src_file_server.exists = False
             self.db_server.session().commit()
         pass

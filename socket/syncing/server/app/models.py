@@ -45,7 +45,7 @@ class File(Base):
         change_date: datetime = datetime.now(),
         exists: bool = True,
     ) -> None:
-        self.path = path
+        self.path = str(path)
         self.size = (
             size
             if size is not None
@@ -82,12 +82,14 @@ class Event(Base):
     def __init__(
         self,
         session: Session,
+        client: int,
         event_type: str | int,
         src_path: Path | str | int,
         dest_path: Path | str | int = None,
         time: datetime = datetime.now(),
     ) -> None:
         self.time = time
+        self.client = client
         if type(event_type).__name__ == "str":
             event_type = (
                 EVENT_MODIFIED
@@ -109,6 +111,7 @@ class Event(Base):
         if self.src_file is None:
             self.src_file = File(src_path)
             session.add(self.src_file)
+            session.commit()
         # add dest_file if not exists
         if dest_path is not None:
             if type(dest_path) == int:
@@ -120,6 +123,7 @@ class Event(Base):
             if self.dest_file is None:
                 self.dest_file = File(dest_path)
                 session.add(self.dest_file)
+                session.commit()
         # handle remove
         if event_type == EVENT_DELETED:
             self.src_file.exists = False
@@ -133,10 +137,14 @@ class Event(Base):
 
     @staticmethod
     def from_other_db(
-        session_new_event: Session, session_existing_event: Session, event: "Event"
+        session_new_event: Session,
+        session_existing_event: Session,
+        event: "Event",
+        client: int,
     ) -> "Event":
         return Event(
             session_new_event,
+            client,
             event.event_type,
             event.src_path(session_existing_event),
             dest_path=event.dest_path(session_existing_event)
