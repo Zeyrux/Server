@@ -57,12 +57,10 @@ class Client:
         self.db_server = db_server
         self.client = client
         self.ip, self.port = addr
-        self.client_id = (
-            self.db_server.session().query(DBClient).filter_by(ip=self.ip).first().id
-        )
         self.password_hash = password_hash
         self.data = Data()
         self.db: Database = None
+        self.client_id: int = None
 
     def run(self) -> None:
         # TODO: Remove
@@ -94,6 +92,9 @@ class Client:
             client_db = DBClient(self.ip)
             self.db_server.session().add(client_db)
             self.db_server.session().commit()
+        self.client_id = (
+            self.db_server.session().query(DBClient).filter_by(ip=self.ip).first().id
+        )
         events: list[Event] = (
             self.db.session()
             .query(Event)
@@ -179,8 +180,8 @@ class Server:
         self.socket.listen(5)
         while True:
             # TODO: remove
-            # client, addr = self.socket.accept()
-            client, addr = (None, ("127.0.0.1", 53624))
+            client, addr = self.socket.accept()
+            # client, addr = (None, ("127.0.0.1", 53624))
             thread = Thread(
                 target=Client(
                     self.socket, self.db, client, addr, self.password_hash
@@ -189,4 +190,4 @@ class Server:
             )
             thread.start()
             # TODO: remove
-            thread.join()
+            # thread.join()
