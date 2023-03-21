@@ -4,7 +4,7 @@ from pathlib import Path
 from threading import Thread, get_ident
 from datetime import datetime
 
-from .models import (
+from .models_old import (
     Base,
     File,
     Event,
@@ -13,7 +13,7 @@ from .models import (
     EVENT_DELETED,
     EVENT_CREATED,
 )
-from .models import Client as DBClient
+from .models_old import Client as DBClient
 
 from server_client_manager import recv_authentication, recv_file
 from server_client_manager.data import Data
@@ -63,14 +63,12 @@ class Client:
         self.client_db_obj: DBClient = None
 
     def run(self) -> None:
-        # TODO: Remove
-        # if self.authenticate():
-        # recv database
-        db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
-        # TODO: Remove
-        # recv_file(self.client, path=db_path)
-        self.db = Database(db_path)
-        self.sync()
+        if self.authenticate():
+            # recv database
+            db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
+            recv_file(self.client, path=db_path)
+            self.db = Database(db_path)
+            self.sync()
 
     def authenticate(self) -> None:
         req = self.client.recv(self.data.REQUEST_LENGHT).decode()
@@ -83,89 +81,6 @@ class Client:
             print(f"{self.client.getsockname()}: NOT Authenticated")
             return False
         return True
-
-    def sync(self) -> None:
-        self.client_db_obj = (
-            self.db_server.session().query(DBClient).filter_by(ip=self.ip).first()
-        )
-        if self.client_db_obj is None:
-            self.client_db_obj = DBClient(self.ip)
-            self.db_server.session().add(self.client_db_obj)
-            self.db_server.session().commit()
-        self.client_id = (
-            self.db_server.session().query(DBClient).filter_by(ip=self.ip).first().id
-        )
-        events: list[Event] = (
-            self.db.session()
-            .query(Event)
-            .filter(Event.time > self.client_db_obj.last_sync)
-            .order_by(Event.time)
-            .all()
-        )
-        for event in events:
-            self.handle_event(event)
-
-    def handle_event(self, event: Event) -> None:
-        # TODO: reworke if statement
-        if (
-            not event.get_src_file(self.db.session()).exists
-            and event.event_type != EVENT_MOVED
-        ):
-            self.mark_event_handelt(event)
-        # get event path
-        src_file_client = event.get_src_file(self.db.session())
-        if src_file_client is None:
-            self.mark_event_handelt(event)
-        # get src_file from server
-        src_file_server = (
-            self.db_server.session()
-            .query(File)
-            .filter(File.path == src_file_client.path)
-            .first()
-        )
-        if src_file_server is None:
-            # TODO: event.src_file is number not the path
-            src_file_server = File.from_file(
-                event.get_src_file(self.db.session()),
-                change_date=datetime(2000, 1, 1, 0, 0, 0, 0),
-            )
-            self.db_server.session().add(src_file_server)
-            self.db_server.session().commit()
-        # get dest_file from server
-        if event.event_type == EVENT_MODIFIED:
-            self._handle_event_modified(event, src_file_server)
-        elif event.event_type == EVENT_MOVED:
-            self._handle_event_moved(event, src_file_server)
-        elif event.event_type == EVENT_DELETED:
-            pass
-        elif event.event_type == EVENT_CREATED:
-            pass
-
-    def mark_event_handelt(self, event: Event) -> None:
-        self.db_server.session().add(
-            Event.from_other_db(
-                self.db_server.session(), self.db.session(), event, self.ip
-            )
-        )
-        self.db_server.session().commit()
-        self.client_db_obj.last_sync = event.time
-        self.db_server.session().commit()
-
-    def _handle_event_modified(self, event: Event, src_file_server: File) -> None:
-        if (
-            src_file_server.change_date
-            < event.get_src_file(self.db.session()).change_date
-        ):
-            pass
-            # TODO: some work
-        # TODO: return error in syncing (2 versions of file)
-
-    def _handle_event_moved(self, event: Event, src_file_server: File) -> None:
-        if not event.get_dest_file(self.db.session()).exists:
-            src_file_server.exists = False
-            self.db_server.session().commit()
-        pass
-        # TODO: some work
 
 
 class Server:
@@ -192,5 +107,3 @@ class Server:
                 daemon=True,
             )
             thread.start()
-            # TODO: remove
-            # thread.join()

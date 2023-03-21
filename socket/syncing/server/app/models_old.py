@@ -2,8 +2,8 @@ from pathlib import Path
 from datetime import datetime
 
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, Session
 from sqlalchemy import Column, ForeignKey
-from sqlalchemy.orm import Session, relationship
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
 
 
@@ -15,21 +15,18 @@ EVENT_CREATED = 3
 Base = declarative_base()
 
 
-class Dir(Base):
-    __tablename__ = "dir"
+class Client(Base):
+    __tablename__ = "client"
 
     id = Column("id", INTEGER(), primary_key=True)
-    name = Column("name", VARCHAR(50), nullable=False)
-    parent = Column("parent", ForeignKey("dir.id"))
+    ip = Column("ip", VARCHAR(15), unique=True, nullable=False)
+    last_sync = Column("last_sync", DATETIME(), nullable=False)
 
-    ref_parent = relationship("Dir", "id", lazy="dynamic")
-
-    def __init__(self, name: str, parent: int | "Dir" = None) -> None:
-        self.name = name
-        self.parent = parent
-
-    def __repr__(self) -> str:
-        return f"<{self.__tablename__}: {self.__dict__}>"
+    def __init__(self, ip, last_sync: datetime = None) -> None:
+        self.ip = ip
+        self.last_sync = (
+            last_sync if last_sync is not None else datetime(2000, 1, 1, 0, 0, 0, 0)
+        )
 
 
 class File(Base):
@@ -60,8 +57,10 @@ class File(Base):
         self.exists = exists
 
     @staticmethod
-    def from_file(file: "File") -> "File":
-        return File(file.path, file.size, file.change_date, exists=file.exists)
+    def from_file(file: "File", change_date=None):
+        if change_date is None:
+            change_date = file.change_date
+        return File(file.path, file.size, change_date, exists=file.exists)
 
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
@@ -71,47 +70,58 @@ class Event(Base):
     __tablename__ = "event"
 
     id = Column("id", INTEGER(), primary_key=True)
+    client = Column("client", ForeignKey("clients.id"), nullable=False)
     event_type = Column("event_type", INTEGER(), nullable=False)
     src_file = Column("src_file", ForeignKey("files.id"), nullable=False)
     dest_file = Column("dest_file", ForeignKey("files.id"), nullable=True)
     time = Column("time", DATETIME(), nullable=False)
 
-    ref_src_file = relationship("File", "id", lazy="dynamic")
-    ref_dest_file = relationship("File", "id", lazy="dynamic")
+    src_file_obj = None
+    dest_file_obj = None
 
     def __init__(
         self,
         session: Session,
-        event_type: str,
-        src_file: Path | str | int | File,
-        dest_file: Path | str | int | File = None,
+        client: int,
+        event_type: str | int,
+        src_path: Path | str | int,
+        dest_path: Path | str | int = None,
         time: datetime = datetime.now(),
     ) -> None:
-        self.event_type = event_type
         self.time = time
+        self.client = client
+        if type(event_type).__name__ == "str":
+            event_type = (
+                EVENT_MODIFIED
+                if event_type == "modified"
+                else EVENT_MOVED
+                if event_type == "moved"
+                else EVENT_DELETED
+                if event_type == "deleted"
+                else EVENT_CREATED
+                if event_type == "created"
+                else None
+            )
+        self.event_type = event_type
         # add src_file if not exists
-        if type(src_file) == File:
-            self.src_file = src_file
-        elif type(src_file) == int:
-            self.src_file = session.query(File).filter_by(id=src_file).first()
+        if type(src_path) == int:
+            self.src_file = session.query(File).filter_by(id=src_path).first()
         else:
-            self.src_file = session.query(File).filter_by(path=str(src_file)).first()
+            self.src_file = session.query(File).filter_by(path=str(src_path)).first()
         if self.src_file is None:
-            self.src_file = File(src_file)
+            self.src_file = File(src_path)
             session.add(self.src_file)
             session.commit()
         # add dest_file if not exists
-        if dest_file is not None:
-            if type(dest_file) == File:
-                self.dest_file = dest_file
-            elif type(dest_file) == int:
-                self.dest_file = session.query(File).filter_by(id=dest_file).first()
+        if dest_path is not None:
+            if type(dest_path) == int:
+                self.dest_file = session.query(File).filter_by(id=dest_path).first()
             else:
                 self.dest_file = (
-                    session.query(File).filter_by(path=str(dest_file)).first()
+                    session.query(File).filter_by(path=str(dest_path)).first()
                 )
             if self.dest_file is None:
-                self.dest_file = File(dest_file)
+                self.dest_file = File(dest_path)
                 session.add(self.dest_file)
                 session.commit()
         # handle remove
@@ -120,12 +130,12 @@ class Event(Base):
         # handle create
         if event_type == EVENT_CREATED:
             self.src_file.exists = True
-        session.commit()
         # turn files into path
-        self.src_file = self.src_file.id
-        if self.dest_file is not None:
-            self.dest_file = self.dest_file.id
+        # self.src_file = self.src_file.id
+        # if self.dest_file is not None:
+        #     self.dest_file = self.dest_file.id
 
+    #
     # @staticmethod
     # def from_other_db(
     #     session_new_event: Session,
@@ -138,7 +148,7 @@ class Event(Base):
     #         client,
     #         event.event_type,
     #         event.src_path(session_existing_event),
-    #         dest_file=event.dest_path(session_existing_event)
+    #         dest_path=event.dest_path(session_existing_event)
     #         if event.dest_file is not None
     #         else None,
     #         time=event.time,

@@ -2,7 +2,7 @@ from json import load
 from pathlib import Path
 import os
 
-from .models import Event
+from .models_old import Event
 
 from watchdog.observers import Observer
 from watchdog.events import (
