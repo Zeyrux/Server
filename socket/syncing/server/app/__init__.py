@@ -60,7 +60,7 @@ class Client:
         self.password_hash = password_hash
         self.data = Data()
         self.db: Database = None
-        self.client_id: int = None
+        self.client_db_obj: DBClient = None
 
     def run(self) -> None:
         # TODO: Remove
@@ -85,12 +85,12 @@ class Client:
         return True
 
     def sync(self) -> None:
-        client_db = (
+        self.client_db_obj = (
             self.db_server.session().query(DBClient).filter_by(ip=self.ip).first()
         )
-        if client_db is None:
-            client_db = DBClient(self.ip)
-            self.db_server.session().add(client_db)
+        if self.client_db_obj is None:
+            self.client_db_obj = DBClient(self.ip)
+            self.db_server.session().add(self.client_db_obj)
             self.db_server.session().commit()
         self.client_id = (
             self.db_server.session().query(DBClient).filter_by(ip=self.ip).first().id
@@ -98,7 +98,7 @@ class Client:
         events: list[Event] = (
             self.db.session()
             .query(Event)
-            .filter(Event.time > client_db.last_sync)
+            .filter(Event.time > self.client_db_obj.last_sync)
             .order_by(Event.time)
             .all()
         )
@@ -106,6 +106,7 @@ class Client:
             self.handle_event(event)
 
     def handle_event(self, event: Event) -> None:
+        # TODO: reworke if statement
         if (
             not event.get_src_file(self.db.session()).exists
             and event.event_type != EVENT_MOVED
@@ -146,6 +147,8 @@ class Client:
                 self.db_server.session(), self.db.session(), event, self.ip
             )
         )
+        self.db_server.session().commit()
+        self.client_db_obj.last_sync = event.time
         self.db_server.session().commit()
 
     def _handle_event_modified(self, event: Event, src_file_server: File) -> None:
