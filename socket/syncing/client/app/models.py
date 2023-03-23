@@ -49,12 +49,12 @@ class Event(Base):
 
     id = Column("id", INTEGER(), primary_key=True)
     event_type = Column("event_type", INTEGER(), nullable=False)
-    src_file = Column("src_file", ForeignKey("files.id"), nullable=False)
-    dest_file = Column("dest_file", ForeignKey("files.id"), nullable=True)
+    src_file = Column("src_file", ForeignKey("file.id"), nullable=False)
+    dest_file = Column("dest_file", ForeignKey("file.id"), nullable=True)
     time = Column("time", DATETIME(), nullable=False)
 
-    ref_src_file = relationship("File", "id", lazy="dynamic")
-    ref_dest_file = relationship("File", "id", lazy="dynamic")
+    # ref_src_file = relationship("File", "id", lazy="dynamic")
+    # ref_dest_file = relationship("File", "id", lazy="dynamic")
 
     def __init__(
         self,

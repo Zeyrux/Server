@@ -33,15 +33,15 @@ class Change(Base):
     __tablename__ = "change"
 
     id = Column("id", INTEGER(), primary_key=True)
-    file = Column("file", ForeignKey("file.id"), nullable=False)
-    client = Column("client", ForeignKey("client.id"), nullable=False)
+    id_file = Column("file", ForeignKey("file.id"), nullable=False)
+    id_client = Column("client", ForeignKey("client.id"), nullable=False)
     time = Column("time", DATETIME, nullable=False)
 
-    # ref_file = relationship("File", "id", lazy="dynamic")
-    # ref_client = relationship("Client", "id", lazy="dynamic")
+    files = relationship("File", back_populates="file.id", lazy="dynamic")
+    clients = relationship("Client", back_populates="change.id", lazy="dynamic")
 
     def __init__(self, file: "File", client: Client | int, time: datetime) -> None:
-        self.file = file
+        self.id_file = file
         self.client = client
         self.time = time
 
@@ -83,12 +83,12 @@ class Event(Base):
 
     id = Column("id", INTEGER(), primary_key=True)
     event_type = Column("event_type", INTEGER(), nullable=False)
-    src_file = Column("src_file", ForeignKey("file.id"), nullable=False)
-    dest_file = Column("dest_file", ForeignKey("file.id"), nullable=True)
+    id_src_file = Column("src_file", ForeignKey("file.id"), nullable=False)
+    id_dest_file = Column("dest_file", ForeignKey("file.id"), nullable=True)
     time = Column("time", DATETIME(), nullable=False)
 
-    # ref_src_file = relationship("File", "id", lazy="dynamic")
-    # ref_dest_file = relationship("File", "id", lazy="dynamic")
+    src_file = relationship("File", back_populates="file.id", lazy="dynamic")
+    dest_file = relationship("File", back_populates="file.id", lazy="dynamic")
 
     def __init__(
         self,
@@ -102,40 +102,40 @@ class Event(Base):
         self.time = time
         # add src_file if not exists
         if type(src_file) == File:
-            self.src_file = src_file
+            self.id_src_file = src_file
         elif type(src_file) == int:
-            self.src_file = session.query(File).filter_by(id=src_file).first()
+            self.id_src_file = session.query(File).filter_by(id=src_file).first()
         else:
-            self.src_file = session.query(File).filter_by(path=str(src_file)).first()
-        if self.src_file is None:
-            self.src_file = File(src_file)
-            session.add(self.src_file)
+            self.id_src_file = session.query(File).filter_by(path=str(src_file)).first()
+        if self.id_src_file is None:
+            self.id_src_file = File(src_file)
+            session.add(self.id_src_file)
             session.commit()
         # add dest_file if not exists
         if dest_file is not None:
             if type(dest_file) == File:
-                self.dest_file = dest_file
+                self.id_dest_file = dest_file
             elif type(dest_file) == int:
-                self.dest_file = session.query(File).filter_by(id=dest_file).first()
+                self.id_dest_file = session.query(File).filter_by(id=dest_file).first()
             else:
-                self.dest_file = (
+                self.id_dest_file = (
                     session.query(File).filter_by(path=str(dest_file)).first()
                 )
-            if self.dest_file is None:
-                self.dest_file = File(dest_file)
-                session.add(self.dest_file)
+            if self.id_dest_file is None:
+                self.id_dest_file = File(dest_file)
+                session.add(self.id_dest_file)
                 session.commit()
         # handle remove
         if event_type == EVENT_DELETED:
-            self.src_file.exists = False
+            self.id_src_file.exists = False
         # handle create
         if event_type == EVENT_CREATED:
-            self.src_file.exists = True
+            self.id_src_file.exists = True
         session.commit()
         # turn files into path
-        self.src_file = self.src_file.id
-        if self.dest_file is not None:
-            self.dest_file = self.dest_file.id
+        self.id_src_file = self.id_src_file.id
+        if self.id_dest_file is not None:
+            self.id_dest_file = self.id_dest_file.id
 
     # @staticmethod
     # def from_event(session, event: "Event") -> "Event":
