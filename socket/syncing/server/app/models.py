@@ -37,8 +37,8 @@ class Change(Base):
     client = Column("client", ForeignKey("client.id"), nullable=False)
     time = Column("time", DATETIME, nullable=False)
 
-    ref_file = relationship("File", "id", lazy="dynamic")
-    ref_client = relationship("Client", "id", lazy="dynamic")
+    # ref_file = relationship("File", "id", lazy="dynamic")
+    # ref_client = relationship("Client", "id", lazy="dynamic")
 
     def __init__(self, file: "File", client: Client | int, time: datetime) -> None:
         self.file = file
@@ -87,8 +87,8 @@ class Event(Base):
     dest_file = Column("dest_file", ForeignKey("file.id"), nullable=True)
     time = Column("time", DATETIME(), nullable=False)
 
-    ref_src_file = relationship("File", "id", lazy="dynamic")
-    ref_dest_file = relationship("File", "id", lazy="dynamic")
+    # ref_src_file = relationship("File", "id", lazy="dynamic")
+    # ref_dest_file = relationship("File", "id", lazy="dynamic")
 
     def __init__(
         self,
