@@ -15,23 +15,6 @@ EVENT_CREATED = 3
 Base = declarative_base()
 
 
-class Dir(Base):
-    __tablename__ = "dir"
-
-    id = Column("id", INTEGER(), primary_key=True)
-    name = Column("name", VARCHAR(50), nullable=False)
-    parent = Column("parent", ForeignKey("dir.id"))
-
-    ref_parent = relationship("Dir", "id", lazy="dynamic")
-
-    def __init__(self, name: str, parent: int | "Dir" = None) -> None:
-        self.name = name
-        self.parent = parent
-
-    def __repr__(self) -> str:
-        return f"<{self.__tablename__}: {self.__dict__}>"
-
-
 class File(Base):
     __tablename__ = "file"
 
@@ -44,18 +27,12 @@ class File(Base):
     def __init__(
         self,
         path: Path | str,
-        size: int = None,
-        change_date: datetime = datetime.now(),
+        size: int,
+        change_date: datetime,
         exists: bool = True,
     ) -> None:
         self.path = str(path)
-        self.size = (
-            size
-            if size is not None
-            else Path(self.path).stat().st_size
-            if Path(self.path).exists()
-            else 0
-        )
+        self.size = size
         self.change_date = change_date
         self.exists = exists
 
@@ -125,6 +102,12 @@ class Event(Base):
         self.src_file = self.src_file.id
         if self.dest_file is not None:
             self.dest_file = self.dest_file.id
+
+    # @staticmethod
+    # def from_event(session, event: "Event") -> "Event":
+    #     return Event(
+    #         session, event.type, event.ref_src_file, event.ref_dest_file, event.time
+    #     )
 
     # @staticmethod
     # def from_other_db(

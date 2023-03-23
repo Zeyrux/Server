@@ -4,22 +4,23 @@ from pathlib import Path
 from threading import Thread, get_ident
 from datetime import datetime
 
-from .models_old import (
+from .models import (
     Base,
     File,
     Event,
+    Change,
     EVENT_MODIFIED,
     EVENT_MOVED,
     EVENT_DELETED,
     EVENT_CREATED,
 )
-from .models_old import Client as DBClient
+from .models import Client as DBClient
 
 from server_client_manager import recv_authentication, recv_file
 from server_client_manager.data import Data
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker, Session
 
 
@@ -63,12 +64,12 @@ class Client:
         self.client_db_obj: DBClient = None
 
     def run(self) -> None:
-        if self.authenticate():
-            # recv database
-            db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
-            recv_file(self.client, path=db_path)
-            self.db = Database(db_path)
-            self.sync()
+        # if self.authenticate():
+        # recv database
+        db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
+        # recv_file(self.client, path=db_path)
+        self.db = Database(db_path)
+        self.sync()
 
     def authenticate(self) -> None:
         req = self.client.recv(self.data.REQUEST_LENGHT).decode()
@@ -81,6 +82,62 @@ class Client:
             print(f"{self.client.getsockname()}: NOT Authenticated")
             return False
         return True
+
+    def sync(self) -> None:
+        a = self.db_server.session()
+        self.client_db_obj = (
+            self.db_server.session().query(DBClient).filter_by(ip=self.ip).first()
+        )
+        if self.client_db_obj is None:
+            self.client_db_obj = DBClient(self.ip)
+            self.db_server.session().add(self.client_db_obj)
+            self.db_server.session().commit()
+        events: list[Event] = (
+            self.db.session()
+            .query(Event)
+            .filter(Event.time > self.client_db_obj.last_sync)
+            .order_by(Event.time)
+            .all()
+        )
+        for event in events:
+            self.handle_event(event)
+
+    def handle_event(self, event: Event) -> None:
+        # get src file
+        src_file_server = (
+            self.db_server.session()
+            .query(File)
+            .filter_by(path=event.ref_src_file.path)
+            .first()
+        )
+        # get dest file
+        dest_file_server = None
+        if event.ref_dest_file is not None:
+            dest_file_server = (
+                self.db_server.session()
+                .query(File)
+                .filter_by(path=event.ref_dest_file.path)
+                .first()
+            )
+        self.handle_file(event, src_file_server)
+        self.handle_event(event, dest_file_server)
+
+    def handle_file(self, event: Event, file_server: File) -> None:
+        # check if there is another new version of file
+        if (
+            self.db_server.session()
+            .query(Change)
+            .filter_by(file=file_server.id)
+            .order_by(desc(Change.time))
+            .first()
+            .time
+            > event.time
+        ):
+            # TODO: return error (2 file versions)
+            return
+        change = Change(file_server, self.client_db_obj, event.time)
+        self.db_server.session().add(change)
+        self.db_server.session().commit()
 
 
 class Server:
@@ -98,8 +155,8 @@ class Server:
         self.socket.listen(5)
         while True:
             # TODO: remove
-            client, addr = self.socket.accept()
-            # client, addr = (None, ("127.0.0.1", 53624))
+            # client, addr = self.socket.accept()
+            client, addr = (None, ("127.0.0.1", 53624))
             thread = Thread(
                 target=Client(
                     self.socket, self.db, client, addr, self.password_hash
@@ -107,3 +164,6 @@ class Server:
                 daemon=True,
             )
             thread.start()
+            # TODO: remove
+            thread.join()
+            break
