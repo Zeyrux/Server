@@ -129,6 +129,7 @@ def add_event(
     else:
         src_file.size = Path(src_file.path).stat().st_size
         src_file.change_date = datetime.now()
+        # TODO: HERE
     # dest file
     dest_file = None
     if type(event) == FileMovedEvent:
