@@ -64,12 +64,12 @@ class Client:
         self.client_db_obj: DBClient = None
 
     def run(self) -> None:
-        if self.authenticate():
-            # recv database
-            db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
-            recv_file(self.client, path=db_path)
-            self.db = Database(db_path)
-            self.sync()
+        # if self.authenticate():
+        # recv database
+        db_path = Path("server", "app", "temp", secure_filename(f"{self.ip}.db"))
+        # recv_file(self.client, path=db_path)
+        self.db = Database(db_path)
+        self.sync()
 
     def authenticate(self) -> None:
         req = self.client.recv(self.data.REQUEST_LENGHT).decode()
@@ -84,7 +84,6 @@ class Client:
         return True
 
     def sync(self) -> None:
-        a = self.db_server.session()
         self.client_db_obj = (
             self.db_server.session().query(DBClient).filter_by(ip=self.ip).first()
         )
@@ -92,6 +91,8 @@ class Client:
             self.client_db_obj = DBClient(self.ip)
             self.db_server.session().add(self.client_db_obj)
             self.db_server.session().commit()
+        print(self.client_db_obj.last_sync)
+        print(self.db.session().query(Event).all())
         events: list[Event] = (
             self.db.session()
             .query(Event)
@@ -147,8 +148,8 @@ class Server:
         self.socket.listen(5)
         while True:
             # TODO: remove
-            client, addr = self.socket.accept()
-            # client, addr = (None, ("127.0.0.1", 53624))
+            # client, addr = self.socket.accept()
+            client, addr = (None, ("127.0.0.1", 53624))
             thread = Thread(
                 target=Client(
                     self.socket, self.db, client, addr, self.password_hash

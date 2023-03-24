@@ -2,7 +2,7 @@ from json import load
 from pathlib import Path
 import os
 
-from .models_old import Event
+from .models import add_event
 
 from watchdog.observers import Observer
 from watchdog.events import (
@@ -20,7 +20,7 @@ SYNC_PATH = Path("client", "sync.json")
 class EventHandler(FileSystemEventHandler):
     def __init__(self, db) -> None:
         super().__init__()
-        self.session = db.session()
+        self.db = db
 
     def on_any_event(self, event):
         if type(event) in [
@@ -29,17 +29,7 @@ class EventHandler(FileSystemEventHandler):
             FileDeletedEvent,
             FileCreatedEvent,
         ]:
-            self.session.add(
-                Event(
-                    self.session,
-                    event.event_type,
-                    event.src_path,
-                    dest_path=event.dest_path
-                    if type(event) == FileMovedEvent
-                    else None,
-                )
-            )
-            self.session.commit()
+            add_event(event, self.db.session())
 
 
 class Collector:

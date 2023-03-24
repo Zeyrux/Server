@@ -5,6 +5,13 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
+from watchdog.events import (
+    FileSystemEventHandler,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileDeletedEvent,
+    FileCreatedEvent,
+)
 
 
 EVENT_MODIFIED = 0
@@ -24,12 +31,10 @@ class Client(Base):
 
     changes = relationship("Change", back_populates="client")
 
-    def __init__(self, ip, last_sync: datetime = None) -> None:
+    def __init__(self, ip: str, last_sync: datetime) -> None:
         super().__init__()
         self.ip = ip
-        self.last_sync = (
-            last_sync if last_sync is not None else datetime(2000, 1, 1, 0, 0, 0, 0)
-        )
+        self.last_sync = last_sync
 
 
 class Change(Base):
@@ -43,10 +48,10 @@ class Change(Base):
     file = relationship("File", foreign_keys=id_file)
     client = relationship("Client", foreign_keys=id_client)
 
-    def __init__(self, file: "File", client: Client | int, time: datetime) -> None:
+    def __init__(self, id_file: int, id_client: int, time: datetime) -> None:
         super().__init__()
-        self.id_file = file
-        self.client = client
+        self.id_file = id_file
+        self.id_client = id_client
         self.time = time
 
     def __repr__(self) -> str:
@@ -65,14 +70,10 @@ class File(Base):
     changes = relationship("Change", back_populates="file")
 
     def __init__(
-        self,
-        path: Path | str,
-        size: int,
-        change_date: datetime,
-        exists: bool = True,
+        self, path: str, size: int, change_date: datetime, exists: bool
     ) -> None:
         super().__init__()
-        self.path = str(path)
+        self.path = path
         self.size = size
         self.change_date = change_date
         self.exists = exists
@@ -98,52 +99,62 @@ class Event(Base):
     dest_file = relationship("File", foreign_keys=id_dest_file)
 
     def __init__(
-        self,
-        session: Session,
-        event_type: str,
-        src_file: Path | str | int | File,
-        dest_file: Path | str | int | File = None,
-        time: datetime = datetime.now(),
+        self, event_type: int, id_src_file: int, id_dest_file: int, time: datetime
     ) -> None:
         super().__init__()
         self.event_type = event_type
+        self.id_src_file = id_src_file
+        self.id_dest_file = id_dest_file
         self.time = time
-        # add src_file if not exists
-        if type(src_file) == File:
-            self.id_src_file = src_file
-        elif type(src_file) == int:
-            self.id_src_file = session.query(File).filter_by(id=src_file).first()
-        else:
-            self.id_src_file = session.query(File).filter_by(path=str(src_file)).first()
-        if self.id_src_file is None:
-            self.id_src_file = File(src_file)
-            session.add(self.id_src_file)
-            session.commit()
-        # add dest_file if not exists
-        if dest_file is not None:
-            if type(dest_file) == File:
-                self.id_dest_file = dest_file
-            elif type(dest_file) == int:
-                self.id_dest_file = session.query(File).filter_by(id=dest_file).first()
-            else:
-                self.id_dest_file = (
-                    session.query(File).filter_by(path=str(dest_file)).first()
-                )
-            if self.id_dest_file is None:
-                self.id_dest_file = File(dest_file)
-                session.add(self.id_dest_file)
-                session.commit()
-        # handle remove
-        if event_type == EVENT_DELETED:
-            self.id_src_file.exists = False
-        # handle create
-        if event_type == EVENT_CREATED:
-            self.id_src_file.exists = True
-        session.commit()
-        # turn files into path
-        self.id_src_file = self.id_src_file.id
-        if self.id_dest_file is not None:
-            self.id_dest_file = self.id_dest_file.id
 
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
+
+
+def add_event(
+    event: FileModifiedEvent | FileMovedEvent | FileDeletedEvent | FileCreatedEvent,
+    session: Session,
+) -> Event:
+    # src file
+    src_file = session.query(File).filter_by(path=event.src_path).first()
+    if src_file is None:
+        size = (
+            Path(event.src_path).stat().st_size if Path(event.src_path).is_file() else 0
+        )
+        src_file = File(
+            event.src_path, size, datetime.now(), True if size != 0 else False
+        )
+        session.add(src_file)
+        session.commit()
+    else:
+        src_file.size = Path(src_file.path).stat().st_size
+        src_file.change_date = datetime.now()
+    # dest file
+    dest_file = None
+    if type(event) == FileMovedEvent:
+        dest_file = session.query(File).filter_by(path=event.dest_path).first()
+        if dest_file is None:
+            size = (
+                Path(event.dest_path).stat().st_size
+                if Path(event.dest_path).is_file()
+                else 0
+            )
+            dest_file = File(
+                event.dest_path, size, datetime.now(), True if size != 0 else False
+            )
+            session.add(dest_file)
+            session.commit()
+    event = Event(
+        {
+            FileModifiedEvent: EVENT_MODIFIED,
+            FileMovedEvent: EVENT_MOVED,
+            FileDeletedEvent: EVENT_DELETED,
+            FileCreatedEvent: EVENT_CREATED,
+        }.get(type(event)),
+        src_file.id,
+        None if dest_file is None else dest_file.id,
+        datetime.now(),
+    )
+    session.add(event)
+    session.commit()
+    return event

@@ -4,7 +4,7 @@ from pathlib import Path
 from queue import Queue
 from threading import get_ident
 
-from .models_old import Base
+from .models import Base
 from .collect import Collector
 
 from server_client_manager import send_authentication, send_file
