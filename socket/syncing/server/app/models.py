@@ -23,6 +23,7 @@ class Client(Base):
     last_sync = Column("last_sync", DATETIME(), nullable=False)
 
     def __init__(self, ip, last_sync: datetime = None) -> None:
+        super().__init__()
         self.ip = ip
         self.last_sync = (
             last_sync if last_sync is not None else datetime(2000, 1, 1, 0, 0, 0, 0)
@@ -37,10 +38,11 @@ class Change(Base):
     id_client = Column("client", ForeignKey("client.id"), nullable=False)
     time = Column("time", DATETIME, nullable=False)
 
-    files = relationship("File", back_populates="file.id", lazy="dynamic")
-    clients = relationship("Client", back_populates="change.id", lazy="dynamic")
+    file = relationship("File", foreign_keys=id_file)
+    client = relationship("File", foreign_keys=id_client)
 
     def __init__(self, file: "File", client: Client | int, time: datetime) -> None:
+        super().__init__()
         self.id_file = file
         self.client = client
         self.time = time
@@ -65,6 +67,7 @@ class File(Base):
         change_date: datetime,
         exists: bool = True,
     ) -> None:
+        super().__init__()
         self.path = str(path)
         self.size = size
         self.change_date = change_date
@@ -87,8 +90,8 @@ class Event(Base):
     id_dest_file = Column("dest_file", ForeignKey("file.id"), nullable=True)
     time = Column("time", DATETIME(), nullable=False)
 
-    src_file = relationship("File", back_populates="file.id", lazy="dynamic")
-    dest_file = relationship("File", back_populates="file.id", lazy="dynamic")
+    src_file = relationship("File", foreign_keys=id_src_file)
+    dest_file = relationship("File", foreign_keys=id_dest_file)
 
     def __init__(
         self,
@@ -98,6 +101,7 @@ class Event(Base):
         dest_file: Path | str | int | File = None,
         time: datetime = datetime.now(),
     ) -> None:
+        super().__init__()
         self.event_type = event_type
         self.time = time
         # add src_file if not exists
@@ -136,50 +140,6 @@ class Event(Base):
         self.id_src_file = self.id_src_file.id
         if self.id_dest_file is not None:
             self.id_dest_file = self.id_dest_file.id
-
-    # @staticmethod
-    # def from_event(session, event: "Event") -> "Event":
-    #     return Event(
-    #         session, event.type, event.ref_src_file, event.ref_dest_file, event.time
-    #     )
-
-    # @staticmethod
-    # def from_other_db(
-    #     session_new_event: Session,
-    #     session_existing_event: Session,
-    #     event: "Event",
-    #     client: int,
-    # ) -> "Event":
-    #     return Event(
-    #         session_new_event,
-    #         client,
-    #         event.event_type,
-    #         event.src_path(session_existing_event),
-    #         dest_file=event.dest_path(session_existing_event)
-    #         if event.dest_file is not None
-    #         else None,
-    #         time=event.time,
-    #     )
-
-    # def src_path(self, session: Session) -> Path:
-    #     return Path(self.get_src_file(session).path)
-
-    # def dest_path(self, session: Session) -> Path:
-    #     return Path(self.get_dest_file(session).path)
-
-    # def get_src_file(self, session: Session) -> File:
-    #     if self.src_file_obj is None:
-    #         self.src_file_obj = (
-    #             session.query(File).filter(File.id == self.src_file).first()
-    #         )
-    #     return self.src_file_obj
-
-    # def get_dest_file(self, session: Session) -> File:
-    #     if self.dest_file_obj is None:
-    #         self.dest_file_obj = (
-    #             session.query(File).filter(File.id == self.dest_file).first()
-    #         )
-    #     return self.dest_file_obj
 
     def __repr__(self) -> str:
         return f"<{self.__tablename__}: {self.__dict__}>"
