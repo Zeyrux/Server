@@ -22,6 +22,8 @@ class Client(Base):
     ip = Column("ip", VARCHAR(15), unique=True, nullable=False)
     last_sync = Column("last_sync", DATETIME(), nullable=False)
 
+    changes = relationship("Change", back_populates="client")
+
     def __init__(self, ip, last_sync: datetime = None) -> None:
         super().__init__()
         self.ip = ip
@@ -39,7 +41,7 @@ class Change(Base):
     time = Column("time", DATETIME, nullable=False)
 
     file = relationship("File", foreign_keys=id_file)
-    client = relationship("File", foreign_keys=id_client)
+    client = relationship("Client", foreign_keys=id_client)
 
     def __init__(self, file: "File", client: Client | int, time: datetime) -> None:
         super().__init__()
@@ -59,6 +61,8 @@ class File(Base):
     size = Column("size", INTEGER(), nullable=False)
     change_date = Column("change_date", DATETIME(), nullable=False)
     exists = Column("exists", BOOLEAN(), nullable=False)
+
+    changes = relationship("Change", back_populates="file")
 
     def __init__(
         self,
